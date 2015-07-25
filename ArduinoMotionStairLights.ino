@@ -1,3 +1,9 @@
+/*
+ * Description: Motion activated stair lights.
+ * Author: Dean Montgomery
+ * Version: 0.1 (Alpha)
+*/
+
 #include "FastLED.h"
 /*
  * Jenn's colors RGB  0 0 81  BLUE
@@ -11,19 +17,22 @@
  * red to blue
  */
 #define NUM_LEDS 26
-#define BRIGHTNESS  120  // 0...255
+#define LEDS_PER_STAIR 2        // Number of Leds per stair.
+#define BRIGHTNESS  120         // 0...255  ( needed ?)
 #define UPDATES_PER_SECOND 100
-#define PIN_LED 3
-#define PIN_PIR_DOWN 5
-#define PIN_PIR_UP 7
-#define STEP_DELAY 200  //ms = 1/5th second.
-
-uint8_t lightsOn = LOW; // track lights on/off
+#define PIN_LED 3               // LED Data pin
+#define PIN_PIR_DOWN 5          // PIR Downstairs Pin
+#define PIN_PIR_UP 7            // PIR Upstairs Pin
+#define STEP_DELAY 200          //ms = 1/5th second. ( needed ?)
+#define GO_UP -1                // Direction control - Arduino at top of stairs
+#define GO_DOWN 1               // Direction control - Arduino at top of stairs
+int8_t lightsOn = LOW;          // track lights on/off
 uint8_t gHue = 0;
-uint8_t gStair = 0;
+int8_t gStair = 0;
 uint8_t gBright = 0;
-uint8_t gStairStart = 0;
-uint8_t gStairEnd = 0;
+int8_t gStairStart = 0;
+int8_t gStairEnd = 0;
+uint8_t gUpDown[NUM_LEDS];      // directional array to walk/loop up or down stairs.
   
 CRGB leds[NUM_LEDS];
 
@@ -41,6 +50,62 @@ void setup() {
   digitalWrite(PIN_PIR_DOWN, LOW);
   digitalWrite(PIN_PIR_UP, LOW);
   Serial.println(" done");
+  welcomeRainbow();  // rainbow - give time for PIR sensors.
+  setUpDown(GO_DOWN);
+  Serial.println("SENSOR ACTIVE");
+}
+
+// Main Loop track PIR sensors.
+void loop() {
+  // Walk Down.
+  if ( digitalRead(PIN_PIR_UP) == HIGH ){
+    if ( lightsOn == LOW ) {
+      lightsOn = HIGH;
+      setUpDown(GO_DOWN);
+      // TODO: Add random pattern picker.
+      fade7();
+      //walk(1);
+      //flicker(1);
+      delay(50);
+    }
+  }
+  // Walk Up.
+  if ( digitalRead(PIN_PIR_DOWN) == HIGH  ){
+    if ( lightsOn == LOW ) {
+      lightsOn = HIGH;
+      setUpDown(GO_UP);
+      fade7(); //Up
+      //walk(-1); // Up
+      //flicker(-1);
+      delay(50);
+    }
+  }
+}
+
+void setUpDown(int8_t upDownDir){
+  // setup walking gUpDown array in forward: 0,1,2,3... or reverse:  ...3,2,1,0
+  gStairStart = 0;
+  if (upDownDir == GO_UP){
+    for ( gStair = NUM_LEDS -1; gStair >= 0; gStair-- ){
+      gUpDown[gStair] = gStairStart++;
+    }
+  } else {
+    for ( gStair = 0; gStair <= NUM_LEDS; gStair++ ){
+      gUpDown[gStair] = gStairStart++;
+    }  
+  }
+  //printUpDown();
+}
+
+void printUpDown(){
+  for (gStair = 0; gStair < NUM_LEDS; gStair++){
+    Serial.print (gStair);
+    Serial.print (" " );
+    Serial.println (gUpDown[gStair]);
+  }
+}
+
+void welcomeRainbow(){
   // Sparkle rainbow welcome give delay to calibrate pir sensors.  This also indicates if program crashed.
   for ( int i = 0; i < 500; i++ ){
     rainbowWithGlitter();
@@ -55,32 +120,9 @@ void setup() {
       FastLED.delay(1);
     }
   }
-    Serial.println("SENSOR ACTIVE");
 }
 
-// Main Loop track PIR sensors.
-void loop() {
-  // Walk Down.
-  if ( digitalRead(PIN_PIR_UP) == HIGH ){
-    if ( lightsOn == LOW ) {
-      lightsOn = HIGH;
-      //fade7(1);
-      //walk(1);
-      flicker(1);
-      delay(50);
-    }
-  }
-  // Walk Up.
-  if ( digitalRead(PIN_PIR_DOWN) == HIGH  ){
-    if ( lightsOn == LOW ) {
-      lightsOn = HIGH;
-      //fade7(-1); //Up
-      //walk(-1); // Up
-      flicker(-1);
-      delay(50);
-    }
-  }
-}
+
 
 void walk(int8_t dir) {
   Serial.print("Walk dir: ");
@@ -245,20 +287,20 @@ void flicker(int8_t dir){
 
 
 // Fade7 effect.
-void fade7(int8_t dir){
-  setStartEnd(dir);
-  Serial.print("Fade7 dir: ");
-  Serial.println(dir);
+void fade7(){
+  //setStartEnd(dir);
+  Serial.println("Fade7");
+  //Serial.println(dir);
   const uint8_t mx = BRIGHTNESS;
   uint8_t r = mx;
   uint8_t g = 0;
   uint8_t b = 0;
   const uint8_t del = 25;
   boolean glitter = ( random8() < 120 );
-  for(gStair=gStairStart; (dir == 1 && gStair < gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
+  for (gStair=0; gStair < NUM_LEDS; gStair+=2){
     for (r=0; r<mx; r+=2) {
-      leds[gStair] = CRGB( r, g, b );
-      leds[gStair + 1*dir] = CRGB( r, g, b );
+      leds[gUpDown[gStair]] = CRGB( r, g, b );
+      leds[gUpDown[gStair + 1]] = CRGB( r, g, b );
       FastLED.show();
       FastLED.delay(1);
     }
@@ -306,16 +348,16 @@ void fade7(int8_t dir){
     FastLED.show();
     delay(del);
   }
-  for(gStair=gStairStart; (dir == 1 && gStair <= gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
+  for (gStair=0; gStair < NUM_LEDS; gStair+=2){
     for (r=mx; r>1; r--) { 
-      leds[gStair] = CRGB( r, g, b );
-      leds[gStair + 1*dir] = CRGB( r, g, b );
+      leds[gUpDown[gStair]] = CRGB( r, g, b );
+      leds[gUpDown[gStair + 1]] = CRGB( r, g, b );
       FastLED.show();
       FastLED.delay(1); 
     }
     r = 0; g = 0; b = 0;
-    leds[gStair] = CRGB( r, g, b );
-    leds[gStair + 1*dir] = CRGB( r, g, b );
+    leds[gUpDown[gStair]] = CRGB( r, g, b );
+    leds[gUpDown[gStair + 1]] = CRGB( r, g, b );
     FastLED.show();
   }
   lightsOn = LOW;  
