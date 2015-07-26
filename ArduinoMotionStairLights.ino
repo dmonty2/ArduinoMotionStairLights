@@ -1,7 +1,7 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 0.4 (Beta)
+ * Version: 0.5 (Beta)
  * Date: 2015-07-26
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
@@ -22,7 +22,7 @@
 #define PIN_PIR_UP 7            // PIR Upstairs Pin
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
-int8_t  lightsOn = LOW;         // track lights on/off
+int8_t  gLightsOn = LOW;         // track lights on/off
 uint8_t gHue = 0;               // track color shifts.
 int8_t  gStair = 0;             // track curent stair.
 uint8_t gBright = 0;            // track brightness
@@ -50,8 +50,8 @@ void setup() {
 void loop() {
   // Walk Down.
   if ( digitalRead(PIN_PIR_UP) == HIGH ){
-    if ( lightsOn == LOW ) {
-      lightsOn = HIGH;
+    if ( gLightsOn == LOW ) {
+      gLightsOn = HIGH;
       setUpDown(GO_DOWN);
       walker();
       delay(50);
@@ -59,8 +59,8 @@ void loop() {
   }
   // Walk Up.
   if ( digitalRead(PIN_PIR_DOWN) == HIGH  ){
-    if ( lightsOn == LOW ) {
-      lightsOn = HIGH;
+    if ( gLightsOn == LOW ) {
+      gLightsOn = HIGH;
       setUpDown(GO_UP);
       walker();
       delay(50);
@@ -81,8 +81,8 @@ void walker(){
   }
 }
 
+// setup walking gUpDown array in forward: 0,1,2,3... or reverse:  ...3,2,1,0
 void setUpDown(int8_t upDownDir){
-  // setup walking gUpDown array in forward: 0,1,2,3... or reverse:  ...3,2,1,0
   uint8_t gStairStart = 0;
   if (upDownDir == GO_UP){
     for ( gStair = NUM_LEDS -1; gStair >= 0; gStair-- ){
@@ -92,24 +92,6 @@ void setUpDown(int8_t upDownDir){
     for ( gStair = 0; gStair <= NUM_LEDS; gStair++ ){
       gUpDown[gStair] = gStairStart++;
     }  
-  }
-}
-
-
-// Sparkle rainbow welcome give delay to calibrate pir sensors.  This also indicates if program crashed.
-void welcomeRainbow(){
-  for ( int i = 0; i < 500; i++ ){
-    rainbowWithGlitter();
-    FastLED.show();
-    FastLED.delay(8.3);
-    EVERY_N_MILLISECONDS( 20 ) { gHue++; }
-  }
-  for (int tick=0; tick < 64; tick++){ 
-    for ( uint8_t i = 0; i < NUM_LEDS; i++ ){
-      leds[i].fadeToBlackBy( 64 );
-      FastLED.show();
-      FastLED.delay(1);
-    }
   }
 }
 
@@ -214,7 +196,7 @@ void walk() {
     leds[gUpDown[gStair + 1]] = CRGB( 0, 0, 0);
     FastLED.show();
   }
-  lightsOn = LOW;  
+  gLightsOn = LOW;  
 }
 
 // Random effects for the walk() stair function.
@@ -278,20 +260,37 @@ void randomEffect(CRGB c1, CRGB c2){
   } 
 }
 
-// startup rainbow
-void rainbow() 
-{
-  // FastLED's built-in rainbow generator
-  fill_rainbow( leds, NUM_LEDS, gHue, 7);
+// Sparkle rainbow welcome give delay to calibrate pir sensors.  This also indicates if program crashed.
+void welcomeRainbow(){
+  for ( int i = 0; i < 500; i++ ){
+    rainbowWithGlitter();
+    FastLED.show();
+    FastLED.delay(8.3);
+    EVERY_N_MILLISECONDS( 20 ) { gHue++; }
+  }
+  for (int tick=0; tick < 64; tick++){ 
+    for ( uint8_t i = 0; i < NUM_LEDS; i++ ){
+      leds[i].fadeToBlackBy( 64 );
+      FastLED.show();
+      FastLED.delay(1);
+    }
+  }
 }
-void rainbowWithGlitter() 
-{
-  // built-in FastLED rainbow, plus some random sparkly glitter
+
+// built-in FastLED rainbow, plus some random sparkly glitter
+void rainbowWithGlitter() {
   rainbow();
   addGlitter(80);
 }
-void addGlitter( fract8 chanceOfGlitter) 
-{
+
+// paint rainbow
+void rainbow() {
+  // FastLED's built-in rainbow generator
+  fill_rainbow( leds, NUM_LEDS, gHue, 7);
+}
+
+// Add random glitter
+void addGlitter( fract8 chanceOfGlitter) {
   if( random8() < chanceOfGlitter) {
     leds[ random16(NUM_LEDS) ] += CRGB::Grey;
   }
@@ -348,7 +347,7 @@ void flicker(){
   }
   fill_solid(leds, NUM_LEDS, CRGB( 0, 0, 0 ));
   FastLED.show();
-  lightsOn = LOW;  
+  gLightsOn = LOW;  
 }
 
 // Fade7 effect with each led: r,rb,b,bg,g,gr rgb(white)
@@ -422,6 +421,6 @@ void fade7(){
     leds[gUpDown[gStair + 1]] = CRGB( r, g, b );
     FastLED.show();
   }
-  lightsOn = LOW;  
+  gLightsOn = LOW;  
 }
 
