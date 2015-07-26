@@ -1,58 +1,46 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 0.1 (Alpha)
+ * Version: 0.2 (Beta)
+ * 
+ * 2 PIR sesors at the top and bottom of the stairs.
+ * WS28012B Addressable RGB lights - 2 LEDs on each stair - This spread out the strip of 30 and left 2-pairs for spare bulbs.
+ * My Arduino is at the top of the stairs and the RGB strip is connected at the top.
+ * This will cycle through several varitions of stair walkers.
+ * 
 */
 
 #include "FastLED.h"
-/*
- * Jenn's colors RGB  0 0 81  BLUE
- * 0 100 100 Teal 006464
- * 60 100 100 Cool White 3C6464
- * 60 10 100 Violet 3C0A64
- * 60 0 50 Purple 3C0032
- * start white fades to Teal
- * violet to purple
- * teal to blue
- * red to blue
- */
+
 #define NUM_LEDS 26
-#define LEDS_PER_STAIR 2        // Number of Leds per stair.
-#define BRIGHTNESS  120         // 0...255  ( needed ?)
-#define UPDATES_PER_SECOND 100
+#define LEDS_PER_STAIR 2        // Number of Leds per stair.  Not yet currenlty changable - just noteable
+#define BRIGHTNESS  120         // 0...255  ( used in fade7 )
 #define PIN_LED 3               // LED Data pin
 #define PIN_PIR_DOWN 5          // PIR Downstairs Pin
 #define PIN_PIR_UP 7            // PIR Upstairs Pin
-#define STEP_DELAY 200          //ms = 1/5th second. ( needed ?)
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
-int8_t lightsOn = LOW;          // track lights on/off
-uint8_t gHue = 0;
-int8_t gStair = 0;
-uint8_t gBright = 0;
-int8_t gStairStart = 0;
-int8_t gStairEnd = 0;
+int8_t  lightsOn = LOW;         // track lights on/off
+uint8_t gHue = 0;               // track color shifts.
+int8_t  gStair = 0;             // track curent stair.
+uint8_t gBright = 0;            // track brightness
 uint8_t gUpDown[NUM_LEDS];      // directional array to walk/loop up or down stairs.
-  
-CRGB leds[NUM_LEDS];
-
-
-
+CRGB    leds[NUM_LEDS];         // setup leds object to access the string
+CRGBPalette16 gPalette;         // some favorite and random colors for display.
+int8_t  gLastPalette = 15;      // track last chosen palette.
+uint8_t gLastWalk = 1;
 
 void setup() {
   delay (3000); // Power Up 3 second safety delay.
-  Serial.begin(9600);
-  FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);
-  //FastLED.setBrightness(BRIGHTNESS);
-  //Serial.print("calibrating sensor ");
+  //Serial.begin(9600);
+  FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here.
   pinMode(PIN_PIR_DOWN, INPUT);
   pinMode(PIN_PIR_UP, INPUT);
   digitalWrite(PIN_PIR_DOWN, LOW);
   digitalWrite(PIN_PIR_UP, LOW);
-  Serial.println(" done");
-  welcomeRainbow();  // rainbow - give time for PIR sensors.
-  setUpDown(GO_DOWN);
-  Serial.println("SENSOR ACTIVE");
+  welcomeRainbow();             // rainbow - give time for PIR sensors to colibrate.
+  setUpDown(GO_DOWN);           // populate the array index used for stair direction.
+  setPalette();                 // setup some favorite & random colors
 }
 
 // Main Loop track PIR sensors.
@@ -62,10 +50,7 @@ void loop() {
     if ( lightsOn == LOW ) {
       lightsOn = HIGH;
       setUpDown(GO_DOWN);
-      // TODO: Add random pattern picker.
-      fade7();
-      //walk(1);
-      //flicker(1);
+      walker();
       delay(50);
     }
   }
@@ -74,17 +59,34 @@ void loop() {
     if ( lightsOn == LOW ) {
       lightsOn = HIGH;
       setUpDown(GO_UP);
-      fade7(); //Up
-      //walk(-1); // Up
-      //flicker(-1);
+      walker();
       delay(50);
     }
   }
 }
 
+// Cycle through stair walkers.
+void walker(){
+  switch (gLastWalk % 3) {
+    case 0:
+      fade7();
+      break;
+    case 1:
+      flicker();
+      break;
+    default:
+      walk();
+  }
+  if (gLastWalk >= 50){
+    gLastWalk = 0;
+  }else{
+    gLastWalk++;
+  }
+}
+
 void setUpDown(int8_t upDownDir){
   // setup walking gUpDown array in forward: 0,1,2,3... or reverse:  ...3,2,1,0
-  gStairStart = 0;
+  uint8_t gStairStart = 0;
   if (upDownDir == GO_UP){
     for ( gStair = NUM_LEDS -1; gStair >= 0; gStair-- ){
       gUpDown[gStair] = gStairStart++;
@@ -93,15 +95,6 @@ void setUpDown(int8_t upDownDir){
     for ( gStair = 0; gStair <= NUM_LEDS; gStair++ ){
       gUpDown[gStair] = gStairStart++;
     }  
-  }
-  //printUpDown();
-}
-
-void printUpDown(){
-  for (gStair = 0; gStair < NUM_LEDS; gStair++){
-    Serial.print (gStair);
-    Serial.print (" " );
-    Serial.println (gUpDown[gStair]);
   }
 }
 
@@ -122,65 +115,57 @@ void welcomeRainbow(){
   }
 }
 
-
-
-void walk(int8_t dir) {
-  Serial.print("Walk dir: ");
-  Serial.println(dir);
+void walkold() {
   static uint8_t hueStart = 208; //purple;
   static uint8_t hueEnd = 160;
   static uint8_t hueShift = 0;
   static uint8_t brightTop = 200;
   static int i = 0;
-  setStartEnd(dir);
   
-  for(gStair=gStairStart; (dir == 1 && gStair < gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
     // Fade in step
     hueShift = hueStart;
     for (gBright=0; gBright<=brightTop; gBright+=2) {
-      leds[gStair] = CHSV( hueStart, 204, gBright );  // purple
-      leds[gStair + 1*dir] = CHSV( hueStart, 204, gBright );  // purple
-      if (  (dir == 1 && gStair >= 2) || (dir == -1 && gStair <= (gStairStart-2)) ) { // slide hue from pruple to blue on previous stair
+      leds[gUpDown[gStair]] = CHSV( hueStart, 204, gBright );  // purple
+      leds[gUpDown[gStair + 1]] = CHSV( hueStart, 204, gBright );  // purple
+      if (  gStair >= 2 ) { // slide hue from pruple to blue on previous stair
         //hueShift = hueShift + ((hueEnd-hueStart)/brightTop*gBright); //=D1+((160-240)/200*10)
         if ( hueShift >= hueEnd ) {
           hueShift--;
-          leds[gStair - 1*dir] = CHSV( hueShift, 204, 200 );
-          leds[gStair - 2*dir] = CHSV( hueShift, 204, 200 );
+          leds[gUpDown[gStair - 1]] = CHSV( hueShift, 204, 200 );
+          leds[gUpDown[gStair - 2]] = CHSV( hueShift, 204, 200 );
         }
       }
       FastLED.show();
       //FastLED.delay(1); 
     }
-    Serial.print(gStair);
-    Serial.println(" step");
   }
   
-  Serial.println("Last Stairs");
+  // Hue shift the last two stairs
   hueShift = hueStart;
   for (gBright=0; gBright<=brightTop; gBright+=2) {
     if ( hueShift >= hueEnd )
     //hueShift = 1/(hueShift + ((hueEnd-hueStart)/brightTop*bright));
     hueShift--;
-    leds[gStairEnd] = CHSV( hueShift, 204, 200 );
-    leds[gStairEnd - 1*dir] = CHSV( hueShift, 204, 200 );
+    leds[gUpDown[NUM_LEDS - 1]] = CHSV( hueShift, 204, 200 );
+    leds[gUpDown[NUM_LEDS - 2]] = CHSV( hueShift, 204, 200 );
     FastLED.show();
     //FastLED.delay(1); 
   }
   //Flash
   FastLED.delay(500); 
-  for(gStair=gStairStart; (dir == 1 && gStair <= gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
-    leds[gStair] = CRGB( 100, 100, 100);
-    leds[gStair + 1*dir] = CRGB( 100, 100, 100);
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+    leds[gUpDown[gStair]] = CRGB( 100, 100, 100);
+    leds[gUpDown[gStair + 1]] = CRGB( 100, 100, 100);
     FastLED.show();
   }
-  for(gStair=gStairStart; (dir == 1 && gStair <= gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
-    leds[gStair] = CHSV( hueEnd, 204, 200 );
-    leds[gStair+1*dir] = CHSV( hueEnd, 204, 200 );
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+    leds[gUpDown[gStair]] = CHSV( hueEnd, 204, 200 );
+    leds[gUpDown[gStair+1]] = CHSV( hueEnd, 204, 200 );
     FastLED.show();
   }
   
   
-  Serial.println("Delay");
   // Stay on for a bit
   fill_solid(leds, NUM_LEDS, CHSV( hueEnd, 204, 200 ));
   //addGlitter(70);
@@ -188,23 +173,182 @@ void walk(int8_t dir) {
   FastLED.delay(5000);
   
   // Turn off steps
-  Serial.println("Steps Off");
-  for(gStair=gStairStart; (dir == 1 && gStair <= gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
     // Fade in step
     //hueShift = hueStart;
     for (gBright=200; gBright>=1; gBright--) { 
-      leds[gStair] = CHSV(hueEnd, 204, gBright);
-      leds[gStair + 1*dir] = CHSV(hueEnd, 204, gBright);
+      leds[gUpDown[gStair]] = CHSV(hueEnd, 204, gBright);
+      leds[gUpDown[gStair + 1]] = CHSV(hueEnd, 204, gBright);
       FastLED.show();
       FastLED.delay(1); 
     }
-    leds[gStair].setHSV( 0, 0, 0);
-    leds[gStair + 1*dir].setHSV( 0, 0, 0);
+    leds[gUpDown[gStair]].setHSV( 0, 0, 0);
+    leds[gUpDown[gStair + 1]].setHSV( 0, 0, 0);
     FastLED.show();
   }
   lightsOn = LOW;  
+}
+
+// Increment to the next color pair in the palette.
+void choosePalette(){
+  if ( gLastPalette >= 15 ) {
+    gLastPalette = 0;
+  } else {
+    gLastPalette+=2;
+  }
+}
+
+// Fill a palette with some colors that my wife picked.
+void setPalette(){
+  /*
+ * Jenn's colors RGB  0 0 81  BLUE
+ * 0 100 100 Teal 006464
+ * 60 100 100 Cool White 3C6464
+ * 60 10 100 Violet 3C0A64
+ * 60 0 50 Purple 3C0032
+ * start white fades to Teal
+ * violet to purple
+ * teal to blue
+ * red to blue
+ */
+  fill_solid( gPalette, 16, CRGB::Red);
+  gPalette[0] = CRGB( 60, 100, 100 ); // Jenn cool white
+  gPalette[1] = CRGB( 0, 90, 90 );    // Jenn teal
+  gPalette[2] = CRGB( 60, 10, 100 );  // Jenn violet
+  gPalette[3] = CRGB( 60, 0, 50 );    // Jenn purple
+  gPalette[4] = CRGB( 0, 0, 81);      // Jenn blue
+  gPalette[5] = CRGB( 100, 0, 0);     // Red
+  gPalette[6] = CRGB( 0, 0, 100);     // Blue
+  gPalette[7] = CRGB( 120, 0, 120);
+  // Random fill the rest.
+  for (uint8_t i = 8; i<16; i++){
+    gPalette[i] = CRGB(random8(3,100), random8(3,100), random8(3,100));
+  }
+}
+
+// Walk the stairs adding random effects.
+void walk() {
+  static uint8_t valTop = 200;
+  static int i = 0;
+  // Pick two colors from the palette. 
+  choosePalette();
+  CRGB c1 = gPalette[gLastPalette];
+  CRGB c2 = gPalette[gLastPalette+1];
+  if ( random8( 5 ) == 3 ){
+    c1 = CRGB(random8(100),random8(100),random8(100));
+    c2 = CRGB(random8(100),random8(100),random8(100));
+  }
+  CRGB trans = CRGB::Black;
+  CRGB trans2 = CRGB::Black;
+  //(r2-r1)/ticks * tick)
   
-  Serial.println("Done");
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+    // Fade in step
+    for (gBright=0; gBright<=valTop; gBright+=2) {
+      // Fade in from off
+      trans.r = 0 + int16_t((c1.r*gBright)/valTop);
+      trans.g = 0 + int16_t((c1.g*gBright)/valTop);
+      trans.b = 0 + int16_t((c1.b*gBright)/valTop);
+      leds[gUpDown[gStair]] = trans;
+      leds[gUpDown[gStair + 1]] = trans;
+      if (  gStair >= 2 ) { // shift last to stairs to the 2nd color.
+        trans2.r = c1.r + int16_t(((c2.r - c1.r)*gBright)/valTop);
+        trans2.g = c1.g + int16_t(((c2.g - c1.g)*gBright)/valTop);
+        trans2.b = c1.b + int16_t(((c2.b - c1.b)*gBright)/valTop);
+        leds[gUpDown[gStair - 1]] = trans2;
+        leds[gUpDown[gStair - 2]] = trans2;
+      }
+      FastLED.show();
+      FastLED.delay(1); 
+    }
+  }
+  
+  // Hue shift the last two stairs
+  for (gBright=0; gBright<=valTop; gBright+=2) {
+    trans2.r = c1.r + int16_t(((c2.r - c1.r)*gBright)/valTop);
+    trans2.g = c1.g + int16_t(((c2.g - c1.g)*gBright)/valTop);
+    trans2.b = c1.b + int16_t(((c2.b - c1.b)*gBright)/valTop);
+    leds[gUpDown[NUM_LEDS - 1]] = trans2;
+    leds[gUpDown[NUM_LEDS - 2]] = trans2;
+    FastLED.show();
+    FastLED.delay(1); 
+  }
+
+  // Delay + random effects
+  randomEffect(c1, c2);
+  
+  // Turn off steps
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+    for (gBright=0; gBright<=valTop; gBright++) { 
+      leds[gUpDown[gStair]].fadeToBlackBy( valTop );
+      leds[gUpDown[gStair + 1]].fadeToBlackBy( valTop );
+      FastLED.show();
+    }
+    leds[gUpDown[gStair]] = CRGB( 0, 0, 0);
+    leds[gUpDown[gStair + 1]] = CRGB( 0, 0, 0);
+    FastLED.show();
+  }
+  lightsOn = LOW;  
+}
+
+// Random effects for the walk() stair function.
+void randomEffect(CRGB c1, CRGB c2){
+  uint8_t var = random8( 1, 5 );
+  int i = 0, x = 0;
+  CRGB trans2 = CRGB::Black;
+  FastLED.delay(500); // Wait for it...
+  switch (var) {
+    case 1:
+      //sparkle
+      {
+        for ( i=0; i<=500; i++){
+          fill_solid(leds, NUM_LEDS, c2);
+          addGlitter(80);
+          FastLED.show();
+          FastLED.delay(8.5);
+        }        
+        fill_solid(leds, NUM_LEDS, c2);
+        FastLED.show();
+      }
+      break;
+    case 2:
+      //pulsate between colors
+      {
+        CRGBPalette16 z;
+        z[0] = c2;
+        z[1] = c1;
+        z[2] = CRGB(random8(1,100),random8(1,100),random8(1,100));
+        z[3] = c1;
+        uint8_t ticks = 200;
+        for (i=0; i<4; i++){
+          for (x = 0; x<ticks; x++){
+            trans2.r = z[i].r + int16_t(((z[i+1].r - z[i].r)*x)/ticks);
+            trans2.g = z[i].g + int16_t(((z[i+1].g - z[i].g)*x)/ticks);
+            trans2.b = z[i].b + int16_t(((z[i+1].b - z[i].b)*x)/ticks);
+            fill_solid(leds, NUM_LEDS, trans2);
+            FastLED.show();
+            FastLED.delay(10);
+          }
+        }
+      }
+      break;
+    default: 
+      //Flash then solid 
+      {
+        for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+          leds[gUpDown[gStair]] = CRGB( 100, 100, 100);
+          leds[gUpDown[gStair + 1]] = CRGB( 100, 100, 100);
+          FastLED.show();
+        }
+        for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+          leds[gUpDown[gStair]] = c2;
+          leds[gUpDown[gStair+1]] = c2;
+          FastLED.show();
+        }
+        FastLED.show();
+        FastLED.delay(5000);
+      }
+  } 
 }
 
 // startup rainbow
@@ -219,7 +363,6 @@ void rainbowWithGlitter()
   rainbow();
   addGlitter(80);
 }
-
 void addGlitter( fract8 chanceOfGlitter) 
 {
   if( random8() < chanceOfGlitter) {
@@ -227,28 +370,27 @@ void addGlitter( fract8 chanceOfGlitter)
   }
 }
 
-// Candle flicker.
-void flicker(int8_t dir){
-  setStartEnd(dir);
+// Candle flicker, blown out, + ember glow
+void flicker(){
   static uint16_t i = 0;
   static uint8_t rnd = 0;
-  uint8_t stair = 0;
+  uint8_t r = 0, g = 0, b = 0;
+  int8_t stair = 0;
   gBright = 0;
-  for(gStair=gStairStart; (dir == 1 && gStair < gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
     for( i = 0; i <= 18; i++ ) {
-      for (stair = gStairStart; (dir == 1 && stair <= gStair ) || ( dir == -1 && stair >= gStair && stair <= gStairStart+1); stair+=(2*dir)) {
+      for (stair = 0; stair <= gStair; stair+=2) {
         rnd = random8(1, 4);
         if ( rnd == 2 ){
           gBright = random8(90,140);
-          leds[stair] = CHSV( 60, 200, gBright );
-          leds[stair + 1*dir] = CHSV( 60, 200, gBright );
+          leds[gUpDown[stair]] = CHSV( 60, 200, gBright );
+          leds[gUpDown[stair + 1]] = CHSV( 60, 200, gBright );
         }
         FastLED.show();
       }
     }
   }
   // Wait
-  Serial.println("Wait");
   for ( i=0; i<=300; i++) {
     for( gStair = 0; gStair < NUM_LEDS; gStair+=2) {  
       rnd = random8(1, 4);
@@ -261,36 +403,30 @@ void flicker(int8_t dir){
     FastLED.show();
     FastLED.delay(25);
   }
-  Serial.println("Shutdown");
-  // Shutdown
-  for(gStair=gStairStart; (dir == 1 && gStair <= gStairEnd ) || (dir == -1 && gStair >= gStairEnd && gStair <= gStairStart+1 ); gStair+=(2*dir)) {
-    for( i = 0; i <= 18; i++) {
-      for (stair = gStair; (dir == 1 && stair <= gStairEnd ) || ( dir == -1 && stair >= gStair && stair <= gStairStart+1); stair+=(2*dir)) {
-        rnd = random8(1, 4);
-        if ( rnd == 2 ){
-          gBright = random8(90,140);
-          leds[stair] = CHSV( 60, 200, gBright );
-          leds[stair + 1*dir] = CHSV( 60, 200, gBright ); 
-          leds[gStair] = CRGB( 0,0,0 );
-          leds[gStair + 1*dir] = CRGB( 0,0,0 );
-        }
-        FastLED.show();
-      }
-    }
-    leds[gStair] = CRGB( 0,0,0 );
-    leds[gStair + 1*dir] = CRGB( 0,0,0 );
+  // Blow out candles and leave an ember.
+  for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
+    rnd = random8(4, 6);
+    r = rnd+1;
+    g = rnd-2;
+    leds[gUpDown[gStair]] = CRGB( r,g,0 );
+    leds[gUpDown[gStair + 1]] = CRGB( r,g,0 );
     FastLED.show();
-    FastLED.delay(25);
+    FastLED.delay(50);
   }
+  for ( i=0; i<=200; i++) {
+    rnd = random8(0, NUM_LEDS-1);
+    leds[gUpDown[rnd]].fadeToBlackBy( 5 );
+    FastLED.show();
+    FastLED.delay(50);
+  }
+  fill_solid(leds, NUM_LEDS, CRGB( 0, 0, 0 ));
+  FastLED.show();
   lightsOn = LOW;  
 }
 
 
-// Fade7 effect.
+// Fade7 effect with each led: r,rb,b,bg,g,gr rgb(white)
 void fade7(){
-  //setStartEnd(dir);
-  Serial.println("Fade7");
-  //Serial.println(dir);
   const uint8_t mx = BRIGHTNESS;
   uint8_t r = mx;
   uint8_t g = 0;
@@ -363,12 +499,4 @@ void fade7(){
   lightsOn = LOW;  
 }
 
-void setStartEnd(int8_t dir){
-  if (dir == 1){ //Down
-    gStairStart = 0;
-    gStairEnd = NUM_LEDS-1;
-  } else {
-    gStairStart = NUM_LEDS-1;
-    gStairEnd = 0;
-  }
-}
+
