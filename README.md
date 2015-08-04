@@ -16,9 +16,18 @@ Components:
 * ws2812b led strip
 * 2x pir sensors
 * 1000uF capacitor.
+
 Wireing is pretty simple:
 * All devices share the same 5V power.
 * 3 data pins are used: for the two pir sensors and the ws2812b strip. You may want to choose different data pins - the defaults are marked at the top of the file.
+
+Mounting:
+* PIR sensor glued into a blank wall face-plate with round hole drilled into it.
+* LED tube is:
+** a pipe cut in 1/2 and screwed to the wall. 
+** led and wiring inside the 1/2 pipe.
+** Clear tubing is sanded to make it frosty & a slit is cut in it.
+** The clear-frosted tube is then sliped over top of the 1/2 pipe.
 
 You can find examples of wiring online:
 https://www.google.ca/search?q=arduino+pir&tbm=isch
