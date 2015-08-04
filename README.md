@@ -30,9 +30,9 @@ Mounting:
 ** The clear-frosted tube is then sliped over top of the 1/2 pipe.
 
 You can find examples of wiring online:
-https://www.google.ca/search?q=arduino+pir&tbm=isch
-https://learn.adafruit.com/adafruit-neopixel-uberguide/power
-https://learn.adafruit.com/adafruit-neopixel-uberguide/arduino-library
+* https://www.google.ca/search?q=arduino+pir&tbm=isch
+* https://learn.adafruit.com/adafruit-neopixel-uberguide/power
+* https://learn.adafruit.com/adafruit-neopixel-uberguide/arduino-library
 
 
 <a href="https://vimeo.com/135328344" target="_blank" ><img src="https://i.vimeocdn.com/video/529290528.webp?mw=500&mh=281" width="500" height="281" /></a>
