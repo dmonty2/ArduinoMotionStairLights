@@ -24,10 +24,10 @@ Wireing is pretty simple:
 Mounting:
 * PIR sensor glued into a blank wall face-plate with round hole drilled into it.
 * LED tube is:
-** a pipe cut in 1/2 and screwed to the wall. 
-** led and wiring inside the 1/2 pipe.
-** Clear tubing is sanded to make it frosty & a slit is cut in it.
-** The clear-frosted tube is then sliped over top of the 1/2 pipe.
+  * a pipe cut in 1/2 and screwed to the wall. 
+  * led and wiring inside the 1/2 pipe.
+  * Clear tubing is sanded to make it frosty & a slit is cut in it.
+  * The clear-frosted tube is then sliped over top of the 1/2 pipe.
 
 You can find examples of wiring online:
 * https://www.google.ca/search?q=arduino+pir&tbm=isch

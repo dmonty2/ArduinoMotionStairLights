@@ -1,7 +1,7 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 0.5 (Beta)
+ * Version: 0.6 (Beta)
  * Date: 2015-07-26
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
@@ -141,10 +141,16 @@ void walk() {
   choosePalette();
   CRGB c1 = gPalette[gLastPalette];
   CRGB c2 = gPalette[gLastPalette+1];
+  // chance of a random palette
   i = random8(1,255); i = random8(1,255); // bit of seeding
   if ( random8( 5 ) == 3 ){
-    c1 = CRGB(random8(100),random8(100),random8(100));
-    c2 = CRGB(random8(100),random8(100),random8(100));
+    c1 = CRGB(random8(3,100),random8(3,100),random8(3,100));
+    c2 = CRGB(random8(3,100),random8(3,100),random8(3,100));
+  }
+  // fix random Black palette.
+  if ( (int(c1.r) + int(c1.g) + int(c1.b)) < 6 ){
+    c1 = gPalette[2];
+    c2 = gPalette[4];
   }
   CRGB trans = CRGB::Black;
   CRGB trans2 = CRGB::Black;
@@ -152,17 +158,13 @@ void walk() {
   
   for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
     // Fade in step
-    for (gBright=0; gBright<=valTop; gBright+=2) {
+    for (gBright=0; gBright<255; gBright = qadd8(gBright,4)) {
       // Fade in from off
-      trans.r = 0 + int16_t((c1.r*gBright)/valTop);
-      trans.g = 0 + int16_t((c1.g*gBright)/valTop);
-      trans.b = 0 + int16_t((c1.b*gBright)/valTop);
+      trans = blend(CRGB::Black,c1,gBright);
       leds[gUpDown[gStair]] = trans;
       leds[gUpDown[gStair + 1]] = trans;
       if (  gStair >= 2 ) { // shift last to stairs to the 2nd color.
-        trans2.r = c1.r + int16_t(((c2.r - c1.r)*gBright)/valTop);
-        trans2.g = c1.g + int16_t(((c2.g - c1.g)*gBright)/valTop);
-        trans2.b = c1.b + int16_t(((c2.b - c1.b)*gBright)/valTop);
+        trans2 = blend(c1,c2,gBright);
         leds[gUpDown[gStair - 1]] = trans2;
         leds[gUpDown[gStair - 2]] = trans2;
       }
@@ -172,10 +174,8 @@ void walk() {
   }
   
   // Hue shift the last two stairs
-  for (gBright=0; gBright<=valTop; gBright+=2) {
-    trans2.r = c1.r + int16_t(((c2.r - c1.r)*gBright)/valTop);
-    trans2.g = c1.g + int16_t(((c2.g - c1.g)*gBright)/valTop);
-    trans2.b = c1.b + int16_t(((c2.b - c1.b)*gBright)/valTop);
+  for (gBright=0; gBright<255; gBright = qadd8(gBright,2)) {
+    trans2 = blend(c1,c2,gBright);
     leds[gUpDown[NUM_LEDS - 1]] = trans2;
     leds[gUpDown[NUM_LEDS - 2]] = trans2;
     FastLED.show();
@@ -183,9 +183,11 @@ void walk() {
   }
 
   // Delay + random effects
+  
   randomEffect(c1, c2);
   
   // Turn off steps
+  
   for(gStair=0; gStair < NUM_LEDS; gStair+=2) {
     for (gBright=0; gBright<=valTop; gBright++) { 
       leds[gUpDown[gStair]].fadeToBlackBy( valTop );
@@ -221,20 +223,50 @@ void randomEffect(CRGB c1, CRGB c2){
       }
       break;
     case 2:
-      //pulsate between colors
+      //pulsate entire strip between colors
       {
         CRGBPalette16 z;
         z[0] = c2;
         z[1] = c1;
-        z[2] = CRGB(random8(1,100),random8(1,100),random8(1,100));
+        z[2] = CRGB(random8(2,100),random8(2,100),random8(2,100));
         z[3] = c1;
-        uint8_t ticks = 200;
         for (i=0; i<4; i++){
-          for (x = 0; x<ticks; x++){
-            trans2.r = z[i].r + int16_t(((z[i+1].r - z[i].r)*x)/ticks);
-            trans2.g = z[i].g + int16_t(((z[i+1].g - z[i].g)*x)/ticks);
-            trans2.b = z[i].b + int16_t(((z[i+1].b - z[i].b)*x)/ticks);
+          for (x = 0; x<=255; x=qadd8(x,1)){
+            trans2 = blend(z[i],z[i+1],x);
             fill_solid(leds, NUM_LEDS, trans2);
+            FastLED.show();
+            FastLED.delay(10);
+          }
+        }
+      }
+      break;
+    case 3:
+      //pulsate each stair strip between colors
+      {
+        CRGBPalette16 p;
+        for (i=0; i<16; i+=2){
+          p[i] = c1;
+          p[i+1] = c2;
+        }
+        // Set final color
+        p[8] = c1;
+        p[9] = c1;
+        for (i=0; i < 10; i++){
+          CRGB cur1 = leds[0];
+          CRGB cur2 = leds[2];
+          for (uint8_t fade=0; fade<255; fade = qadd8(fade,2)) {
+            for(gStair=0; gStair < NUM_LEDS; gStair+=4) {
+              leds[gUpDown[gStair]] = blend(cur1,p[i],fade);
+              if (gStair + 1 < NUM_LEDS){
+                leds[gUpDown[gStair + 1]] = blend(cur1,p[i],fade);  
+              }
+              if (gStair + 2 < NUM_LEDS){
+                leds[gUpDown[gStair + 2]] = blend(cur2,p[i+1],fade);  
+              }
+              if (gStair + 3 < NUM_LEDS){
+                leds[gUpDown[gStair + 3]] = blend(cur2,p[i+1],fade);  
+              } 
+            }  
             FastLED.show();
             FastLED.delay(10);
           }
@@ -255,7 +287,7 @@ void randomEffect(CRGB c1, CRGB c2){
           FastLED.show();
         }
         FastLED.show();
-        FastLED.delay(5000);
+        FastLED.delay(7000);
       }
   } 
 }
@@ -292,7 +324,7 @@ void rainbow() {
 // Add random glitter
 void addGlitter( fract8 chanceOfGlitter) {
   if( random8() < chanceOfGlitter) {
-    leds[ random16(NUM_LEDS) ] += CRGB::Grey;
+    leds[ random16(NUM_LEDS) ] += CRGB(100,100,100);
   }
 }
 
@@ -308,7 +340,7 @@ void flicker(){
       for (stair = 0; stair <= gStair; stair+=2) {
         rnd = random8(1, 4);
         if ( rnd == 2 ){
-          gBright = random8(90,140);
+          gBright = random8(110,140);
           leds[gUpDown[stair]] = CHSV( 60, 200, gBright );
           leds[gUpDown[stair + 1]] = CHSV( 60, 200, gBright );
         }
@@ -321,7 +353,7 @@ void flicker(){
     for( gStair = 0; gStair < NUM_LEDS; gStair+=2) {  
       rnd = random8(1, 4);
       if ( rnd == 2 ){
-        gBright = random8(90,140);
+        gBright = random8(110,140);
         leds[gStair] = CHSV( 60, 200, gBright );
         leds[gStair+1] = CHSV( 60, 200, gBright );
       }
