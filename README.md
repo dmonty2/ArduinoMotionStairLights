@@ -37,10 +37,6 @@ You can find examples of wiring online:
 
 <a href="https://vimeo.com/135328344" target="_blank" ><img src="https://i.vimeocdn.com/video/529290528.webp?mw=500&mh=281" width="500" height="281" /></a>
 
-Known Bug:
-* Random color pickers sometimes choose RGB=000 (black/off).  I need to add some checks to the code to ensure a minimal color level.
-
-
 TODO/Whishlist:
 * Make it so you can change the # of LEDs per stair.
 
