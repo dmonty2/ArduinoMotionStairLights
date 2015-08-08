@@ -1,7 +1,7 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 1.0
+ * Version: 1.1
  * Date: Aug 8, 2015
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
@@ -231,7 +231,7 @@ void randomEffect(CRGB c1, CRGB c2){
         z[2] = CRGB(random8(2,100),random8(2,100),random8(2,100));
         z[3] = c1;
         for (i=0; i<4; i++){
-          for (x = 0; x<=255; x=qadd8(x,1)){
+          for (x = 0; x<255; x=qadd8(x,1)){
             trans2 = blend(z[i],z[i+1],x);
             fill_solid(leds, NUM_LEDS, trans2);
             FastLED.show();
