@@ -1,8 +1,8 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 0.6 (Beta)
- * Date: 2015-07-26
+ * Version: 1.0
+ * Date: Aug 8, 2015
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
  * WS28012B Addressable RGB lights - 2 LEDs on each stair - This spread out the strip of 30 and left 2-pairs for spare bulbs.
