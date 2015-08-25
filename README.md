@@ -35,10 +35,13 @@ You can find examples of wiring online:
 * https://learn.adafruit.com/adafruit-neopixel-uberguide/arduino-library
 
 Video:
+
 <a href="https://vimeo.com/135328344" target="_blank" ><img src="https://i.vimeocdn.com/video/529290528.webp?mw=500&mh=281" width="500" height="281" /></a>
 
 Mounting Conduit:
+
 ![led_conduit](https://cloud.githubusercontent.com/assets/1381071/9459073/b65b1010-4aab-11e5-9349-805730a26c46.jpg)
+
 
 * Cost for controller and lighting:
   * $10 - 1 meter LED lights ws2812b 30 leds/m.
