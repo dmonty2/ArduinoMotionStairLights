@@ -37,6 +37,26 @@ You can find examples of wiring online:
 
 <a href="https://vimeo.com/135328344" target="_blank" ><img src="https://i.vimeocdn.com/video/529290528.webp?mw=500&mh=281" width="500" height="281" /></a>
 
+
+* Cost for controller and lighting:
+  * $10 - 1 meter LED lights ws2812b 30 leds/m.
+  * $7 - microcontroller - arduino uno.
+  * $3 - 2x Passive infrared motion sensors.
+  * $5.50 - 5v 3A switching power supply.
+  * Free - repuposed 1000uf capacitor
+
+Subtotal lighting: $25
+
+* Cost for mounting hardware:
+  * $3 - metal electrical conduit tube - we cut it in half and screwed it to the wall.
+  * $15 - Vinal Tubing - cut a slit in it and sanded it down & slid it over top of the half-conduit.
+  * $3 - 2x blank light switch cover - drilled a hole in it to mount the PIR sensors.
+  * $7 - Access panel - so I could hide the microcontroller inside the wall.
+
+Subtotal mounting: $28
+
+TOTAL $53
+
 TODO/Whishlist:
 * Make it so you can change the # of LEDs per stair.
 
