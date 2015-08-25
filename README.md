@@ -38,7 +38,7 @@ Video:
 
 <a href="https://vimeo.com/135328344" target="_blank" ><img src="https://i.vimeocdn.com/video/529290528.webp?mw=500&mh=281" width="500" height="281" /></a>
 
-Mounting Conduit:
+Mounting Conduit example - (NOTE: heat-shrink and electrical tape was used to stop shorting out - this is not in the photo)
 
 ![led_conduit](https://cloud.githubusercontent.com/assets/1381071/9459073/b65b1010-4aab-11e5-9349-805730a26c46.jpg)
 
@@ -59,6 +59,7 @@ Mounting Conduit:
 * Subtotal mounting: $28
 
 TOTAL $53
+
 Since this 1st micro-controller project I've been able to source the parts for even less than listed above.
 
 TODO/Whishlist:
