@@ -49,16 +49,14 @@ Mounting Conduit:
   * $3 - 2x Passive infrared motion sensors.
   * $5.50 - 5v 3A switching power supply.
   * Free - repuposed 1000uf capacitor
-
-Subtotal lighting: $25
+* Subtotal lighting: $25
 
 * Cost for mounting hardware:
   * $3 - metal electrical conduit tube - we cut it in half and screwed it to the wall.
   * $15 - Vinal Tubing - cut a slit in it and sanded it down & slid it over top of the half-conduit.
   * $3 - 2x blank light switch cover - drilled a hole in it to mount the PIR sensors.
   * $7 - Access panel - so I could hide the microcontroller inside the wall.
-
-Subtotal mounting: $28
+* Subtotal mounting: $28
 
 TOTAL $53
 
