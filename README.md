@@ -17,7 +17,7 @@ Components:
 * 2x pir sensors
 * 1000uF capacitor.
 
-Wireing is pretty simple:
+Wiring is pretty simple:
 * All devices share the same 5V power.
 * 3 data pins are used: for the two pir sensors and the ws2812b strip. You may want to choose different data pins - the defaults are marked at the top of the file.
 
@@ -45,20 +45,21 @@ Mounting Conduit:
 
 * Cost for controller and lighting:
   * $10 - 1 meter LED lights ws2812b 30 leds/m.
-  * $7 - microcontroller - arduino uno.
+  * $7 - micro-controller - arduino uno.
   * $3 - 2x Passive infrared motion sensors.
   * $5.50 - 5v 3A switching power supply.
-  * Free - repuposed 1000uf capacitor
+  * Free - repurposed 1000uf capacitor
 * Subtotal lighting: $25
 
 * Cost for mounting hardware:
   * $3 - metal electrical conduit tube - we cut it in half and screwed it to the wall.
-  * $15 - Vinal Tubing - cut a slit in it and sanded it down & slid it over top of the half-conduit.
+  * $15 - Vinyl Tubing - cut a slit in it and sanded it down & slid it over top of the half-conduit.
   * $3 - 2x blank light switch cover - drilled a hole in it to mount the PIR sensors.
-  * $7 - Access panel - so I could hide the microcontroller inside the wall.
+  * $7 - Access panel - so I could hide the micro-controller inside the wall.
 * Subtotal mounting: $28
 
 TOTAL $53
+Since this 1st micro-controller project I've been able to source the parts for even less than listed above.
 
 TODO/Whishlist:
 * Make it so you can change the # of LEDs per stair.
