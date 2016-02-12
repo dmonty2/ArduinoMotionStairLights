@@ -1,8 +1,9 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 2.1
- * Date: Feb 8, 2016
+ * Version: 2.2
+ * 
+ * Date: Feb 11, 2016
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
  * WS28012B Addressable RGB lights - 2 LEDs on each stair - This spread out the strip of 30 and left 2-pairs for spare bulbs.
@@ -27,7 +28,7 @@
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
 uint8_t gHue = 0;               // track color shifts.
-int8_t  gStair = 0;             // track curent stair.
+int8_t gStair = 0;             // track curent stair.
 uint8_t gBright = 0;            // track brightness
 uint8_t gUpDown[NUM_LEDS];      // directional array to walk/loop up or down stairs.
 int8_t gupDownDir = 1;
@@ -69,7 +70,8 @@ void setup() {
   delay (3000); // Power Up 3 second safety delay.
   //Serial.begin(57600);
   randomSeed(millis());
-  FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here.
+  FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here. 
+  FastLED.setDither( 0 );  // Stops flikering in animations.
   pinMode(PIN_PIR_DOWN, INPUT);
   pinMode(PIN_PIR_UP, INPUT);
   pinMode(13, OUTPUT);
@@ -99,6 +101,9 @@ void loop() {
 void readSensors(){
   if ( digitalRead(PIN_PIR_UP) == HIGH ){  // Walk Down.
     previousOffMillis = currentMillis;
+    //if ( stage == stage_run ){
+    //  return;  //keep the animation fast.
+    //} else 
     if ( stage == off ){
       chooseEffects();
       stage = stage_init;
@@ -121,6 +126,8 @@ void readSensors(){
 void chooseEffects(){
   randomSeed(millis());
   r = random8(1, 255);
+  //effect = efade6;
+  //return;
   if ( r >= 0 && r <= 100 ){
     effect = ewalk;  // My favorite transition with random effect variations
   } else if ( r > 100 && r <= 175 ){
@@ -446,32 +453,29 @@ void flicker(){
   }  
 }
 
-// Fade6 effect with each led: r,rb,b,bg,g,gr rgb(white)
+// Fade6 effect with each led using a hue shift
 void fade(){
   if ( stage == stage_init ){
     gBright = 0;
     gStair = 0;
-    x = 0;
-    interval = 7;
-    r = 0;
-    h = 0;
-    s = 255;
+    interval = 5;
+    h = 128;
+    s = 140;
     v = BRIGHTNESS;
+    r = 0;
     g = ( random8() < 120 );
     stage = stage_grow;
   } else if ( stage == stage_grow ){
     if ( gBright<255 ){
       if ( gStair < NUM_LEDS ){
-        trans = blend(CRGB::Black,CHSV(h,s,v),gBright);
+        trans = blend(CHSV(h,s,0),CHSV(h,s,v),gBright);
         leds[gUpDown[gStair]] = trans;
         leds[gUpDown[gStair + 1]] = trans;
         gBright = qadd8(gBright, 1);
       } else {
         stage = stage_init_run;
-        interval = 50;
         gBright=0;
         gStair=0;
-        r = 0;
       }
       gBright = qadd8(gBright, 2);
     } else {
@@ -480,21 +484,17 @@ void fade(){
     }
   } else if ( stage == stage_init_run ) {
     v = BRIGHTNESS;
-    interval = 2;
+    interval = 70;
     stage = stage_run;
   } else if ( stage == stage_run ){
-    if ( gStair < NUM_LEDS ){
-      h+=1;
-      leds[gUpDown[gStair]] = CHSV(gStair + h, s, v);
-      //if (g) addGlitter(40);
-      gStair++;
-    } else {
-      gStair = 0;
-      h = h - NUM_LEDS + 1;
+    r = h;
+    for(gStair=0; gStair < NUM_LEDS; gStair++) {
+        h+=(3*gupDownDir); // left PIR go down
+        leds[gUpDown[gStair]] = CHSV(h, s, v);
     }
+    h = r + (3*gupDownDir*-1);
   } else if ( stage == stage_init_dim ){
     interval = 7;
-    r = BRIGHTNESS;
     h = h - gStair;
     gStair = 0;
     stage = stage_dim;
@@ -503,7 +503,7 @@ void fade(){
       if ( gStair < NUM_LEDS ){
         leds[gUpDown[gStair]] = CHSV(gStair + h, s, v);
         leds[gUpDown[gStair + 1]]= CHSV(gStair + h, s, v);
-        v--;
+        v = qsub8(v, 1);
       } else {
         stage = off;
       }
