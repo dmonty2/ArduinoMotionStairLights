@@ -72,8 +72,8 @@ void setup() {
   randomSeed(millis());
   FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here. 
   FastLED.setDither( 0 );  // Stops flikering in animations.
-  pinMode(PIN_PIR_DOWN, INPUT);
-  pinMode(PIN_PIR_UP, INPUT);
+  pinMode(PIN_PIR_DOWN, INPUT); //5
+  pinMode(PIN_PIR_UP, INPUT);  //7
   pinMode(13, OUTPUT);
   digitalWrite(PIN_PIR_DOWN, LOW);
   digitalWrite(PIN_PIR_UP, LOW);
