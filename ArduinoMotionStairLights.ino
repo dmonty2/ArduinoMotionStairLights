@@ -23,7 +23,7 @@
 #define BRIGHTNESS 120          // 0...255  ( used in fade7 )
 #define PIN_LED 3               // LED Data pin
 #define PIN_PIR_DOWN 5          // PIR Downstairs Pin
-#define PIN_PIR_UP 8            // PIR Upstairs Pin
+#define PIN_PIR_UP 7            // PIR Upstairs Pin
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
 uint8_t gHue = 0;               // track color shifts.
