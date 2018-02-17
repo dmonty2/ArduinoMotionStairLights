@@ -1,10 +1,9 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 2.3a
- * WARNING: this is development branch - not fully tested and debugged.  This may crash.
+ * Version: 2.4
  * 
- * Date: Feb 16, 2018
+ * Date: Feb 17, 2018
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
  * WS28012B Addressable RGB lights - 2 LEDs on each stair - This spread out the strip of 30 and left 2-pairs for spare bulbs.
@@ -19,12 +18,12 @@
 #include "FastLED.h"
 //#include <avr/eeprom.h>
 
-#define NUM_LEDS 26
+#define NUM_LEDS 12
 #define LEDS_PER_STAIR 2        // Number of Leds per stair.  Not yet currenlty changable - just noteable
 #define BRIGHTNESS 120          // 0...255  ( used in fade7 )
 #define PIN_LED 3               // LED Data pin
 #define PIN_PIR_DOWN 5          // PIR Downstairs Pin
-#define PIN_PIR_UP 7            // PIR Upstairs Pin
+#define PIN_PIR_UP 8            // PIR Upstairs Pin
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
 uint8_t gHue = 0;               // track color shifts.
@@ -68,7 +67,7 @@ CRGB trans2;
 
 void setup() {
   delay (3000); // Power Up 3 second safety delay.
-  //Serial.begin(57600);
+  //Serial.begin(115200);
   randomSeed(millis());
   FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here. 
   FastLED.setDither( 0 );  // Stops flikering in animations.
@@ -123,8 +122,7 @@ void readSensors(){
 void chooseEffects(){
   randomSeed(millis());
   r = random8(1, 255);
-  //effect = efade6;  // temporarily force effect for debugging.
-  //return;
+  //effect = efade6; return;  // temporarily force effect for debugging: ewalk, eflicker, efade6
   if ( r >= 0 && r <= 100 ){
     effect = ewalk;  // My favorite transition with random effect variations
   } else if ( r > 100 && r <= 175 ){
@@ -250,7 +248,7 @@ void walk() {
       }
       gBright = qadd8(gBright, 4);
     } else {
-      if ( gStair < NUM_LEDS - LEDS_PER_STAIR ) {
+      if ( gStair <= ( NUM_LEDS - LEDS_PER_STAIR ) ) {
         gStair+=LEDS_PER_STAIR;  //next stair.
       } else {
         stage = stage_init_run;
@@ -279,7 +277,7 @@ void walk() {
     stage = stage_dim;
   } else if ( stage == stage_dim ) {
     if ( gBright <= valTop  ) {
-      if ( gStair < ( NUM_LEDS - LEDS_PER_STAIR ) ){
+      if ( gStair <= ( NUM_LEDS - LEDS_PER_STAIR ) ){
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds]].fadeToBlackBy( 6 );
         }
@@ -329,14 +327,14 @@ void randomEffect(){
     r = ++g;
   } else if ( walk_effect == flash ) {
     if ( x == 0 ) {
-      for(gStair=0; gStair < NUM_LEDS - LEDS_PER_STAIR; gStair+=LEDS_PER_STAIR) {
+      for(gStair=0; gStair <= (NUM_LEDS - LEDS_PER_STAIR); gStair+=LEDS_PER_STAIR) {
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds]] = CRGB( 100, 100, 100);
         }
         FastLED.show();
         FastLED.delay(1);
       }
-      for(gStair=0; gStair < NUM_LEDS - LEDS_PER_STAIR; gStair+=LEDS_PER_STAIR) {
+      for(gStair=0; gStair <= (NUM_LEDS - LEDS_PER_STAIR); gStair+=LEDS_PER_STAIR) {
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds]] = c2;
         }
@@ -399,8 +397,8 @@ void flicker(){
     stage = stage_grow;
   } else if ( stage == stage_grow ){
     if ( i <= 10 ){  // number of flicker between steps
-      if ( gStair < (NUM_LEDS - LEDS_PER_STAIR )){  // for each step
-        for ( stair = 0; stair <= gStair; stair +=2 ){  // up to currently lit step.
+      if ( gStair <= (NUM_LEDS - LEDS_PER_STAIR)){  // for each step
+        for ( stair = 0; stair <= gStair; stair += LEDS_PER_STAIR ){  // up to currently lit step.
           rnd = random8(1, 4);
           if ( rnd == 2 ){
             gBright = random8(110,140);
@@ -420,7 +418,7 @@ void flicker(){
   } else if ( stage == stage_init_run ){
     stage = stage_run;
   } else if ( stage == stage_run ){
-    for( gStair = 0; gStair < (NUM_LEDS - LEDS_PER_STAIR); gStair+=LEDS_PER_STAIR) {  
+    for( gStair = 0; gStair <= (NUM_LEDS - LEDS_PER_STAIR); gStair += LEDS_PER_STAIR) {  
       rnd = random8(1, 4);
       if ( rnd == 2 ){
         gBright = random8(110,140);
@@ -431,7 +429,7 @@ void flicker(){
     }
   } else if ( stage == stage_init_dim ){
     // Blow out candles and leave an ember.
-    for(gStair=0; gStair < (NUM_LEDS - LEDS_PER_STAIR); gStair+=LEDS_PER_STAIR) {
+    for(gStair=0; gStair <= (NUM_LEDS - LEDS_PER_STAIR); gStair += LEDS_PER_STAIR) {
       rnd = random8(4, 6);
       r = rnd+1;
       g = rnd-2;
@@ -473,7 +471,7 @@ void fade(){
     stage = stage_grow;
   } else if ( stage == stage_grow ){
     if ( gBright<255 ){
-      if ( gStair < NUM_LEDS - LEDS_PER_STAIR ){
+      if ( gStair <= (NUM_LEDS - LEDS_PER_STAIR) ){
         trans = blend(CHSV(h,s,0),CHSV(h,s,v),gBright);
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds ]] = trans;
@@ -507,7 +505,7 @@ void fade(){
     stage = stage_dim;
   } else if ( stage == stage_dim ){
     if ( v > 0 ) {
-      if ( gStair < (NUM_LEDS - LEDS_PER_STAIR )){
+      if ( gStair <= (NUM_LEDS - LEDS_PER_STAIR )){
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds]] = CHSV(gStair + h, s, v);
         }
