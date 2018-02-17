@@ -1,7 +1,7 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 2.4
+ * Version: 2.5
  * 
  * Date: Feb 17, 2018
  * 
@@ -27,10 +27,10 @@
 #define GO_UP -1                // Direction control - Arduino at top of stairs
 #define GO_DOWN 1               // Direction control - Arduino at top of stairs
 uint8_t gHue = 0;               // track color shifts.
-int8_t  gStair = 0;             // track curent stair.
-int8_t  gStairLeds = 0;         // tracking lights per stair.
+int16_t gStair = 0;             // track curent stair.
+int16_t gStairLeds = 0;         // tracking lights per stair.
 uint8_t gBright = 0;            // track brightness
-uint8_t gUpDown[NUM_LEDS];      // directional array to walk/loop up or down stairs.
+uint16_t gUpDown[NUM_LEDS];     // directional array to walk/loop up or down stairs.
 int8_t  gupDownDir = 1;         // direction of animation up or down
 CRGB    leds[NUM_LEDS];         // setup leds object to access the string
 CRGBPalette16 gPalette;         // some favorite and random colors for display.
@@ -39,14 +39,13 @@ CRGBPalette16 fade6 =          (CRGB( BRIGHTNESS, 0, 0),       CRGB(BRIGHTNESS,B
                                 CRGB( BRIGHTNESS, 0, 0));
 CRGBPalette16 z;
 int8_t gLastPalette = 15;       // track last chosen palette.
-uint8_t gLastWalk = 1;
 unsigned long currentMillis = millis(); // define here so it does not redefine in the loop.
 long previousMillis = 0;
 long previousOffMillis = 0;     // countdown power off timer
 long offInterval = 30000;       // 1000mills * 30sec
 long effectInterval = 40;
-enum Effects { ewalk, eflicker, efade6 };
-Effects effect = ewalk;
+enum Effects { effectWalk, effectFlicker, effectFade6 };
+Effects effect = effectWalk;
 enum WalkEffects { sparkle, pulsate1, pulsate2, flash };
 WalkEffects walk_effect = sparkle;
 // Stages of the animation.  Allows for PIR sensor to re-activation the run stage of the animation.
@@ -54,11 +53,10 @@ enum Stage { off, stage_init, stage_grow, stage_init_run, stage_run, stage_init_
 Stage stage = off;
 int i = 0;
 int x = 0;
-uint8_t var = 0;
-uint8_t valTop = 200;
+uint8_t topBrightness = 200;  // May preserve LED life if not running at full brightness 255?
 uint8_t rnd = 0;
-uint8_t r = 0, g = 0, b = 0, h = 0, s = 0, v = 0;
-int8_t stair = 0;
+uint8_t r = 0, g = 0, b = 0, h = 0, s = 0, v = 0; // red green blue hue sat val
+int16_t stair = 0;
 CRGB c1;
 CRGB c2;
 CRGB trans;
@@ -122,22 +120,22 @@ void readSensors(){
 void chooseEffects(){
   randomSeed(millis());
   r = random8(1, 255);
-  //effect = efade6; return;  // temporarily force effect for debugging: ewalk, eflicker, efade6
+  //effect = effectFlicker; return;  // temporarily force effect for debugging: effectWalk, effectFlicker, effectFade6
   if ( r >= 0 && r <= 100 ){
-    effect = ewalk;  // My favorite transition with random effect variations
+    effect = effectWalk;     // My favorite transition with random effect variations
   } else if ( r > 100 && r <= 175 ){
-    effect = eflicker;  // Candle with embers.
+    effect = effectFlicker;  // Candle with embers.
   } else {
-    effect = efade6;  // hueshift rainbow.
+    effect = effectFade6;    // hueshift rainbow.
   } 
 }
 
 void update_effect(){
-  if ( effect == ewalk ){
+  if ( effect == effectWalk ){
     walk();  
-  } else if ( effect == eflicker ){
+  } else if ( effect == effectFlicker ){
     flicker();
-  } else if ( effect == efade6 ){
+  } else if ( effect == effectFade6 ){
     fade();
   }
 }
@@ -199,7 +197,7 @@ void setPalette(){
 void walk() {
   
   if ( stage == stage_init ){
-    valTop = 200;
+    topBrightness = 200;
     // Pick two colors from the palette. 
     choosePalette();
     c1 = gPalette[gLastPalette];
@@ -276,7 +274,7 @@ void walk() {
     gStair = 0;
     stage = stage_dim;
   } else if ( stage == stage_dim ) {
-    if ( gBright <= valTop  ) {
+    if ( gBright <= topBrightness  ) {
       if ( gStair <= ( NUM_LEDS - LEDS_PER_STAIR ) ){
         for ( gStairLeds=0; gStairLeds < LEDS_PER_STAIR; gStairLeds++ ){
           leds[gUpDown[gStair + gStairLeds]].fadeToBlackBy( 6 );
@@ -356,7 +354,7 @@ void welcomeRainbow(){
     EVERY_N_MILLISECONDS( 20 ) { gHue++; }
   }
   for (int tick=0; tick < 64; tick++){ 
-    for ( uint8_t i = 0; i < NUM_LEDS; i++ ){
+    for ( uint16_t i = 0; i < NUM_LEDS; i++ ){
       leds[i].fadeToBlackBy( 64 );
       FastLED.show();
       FastLED.delay(1);
