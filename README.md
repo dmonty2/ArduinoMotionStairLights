@@ -62,6 +62,4 @@ TOTAL $53
 
 Since this 1st micro-controller project I've been able to source the parts for even less than listed above.
 
-TODO/Whishlist:
-* Make it so you can change the # of LEDs per stair.
 
