@@ -1,48 +1,54 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 2.5
+ * Version: 2.6
  * 
- * Date: Feb 17, 2018
+ * Date: Feb 18, 2018
  * 
  * 2 PIR sesors at the top and bottom of the stairs.
- * WS28012B Addressable RGB lights - 2 LEDs on each stair - This spread out the strip of 30 and left 2-pairs for spare bulbs.
+ * WS28012B Addressable RGB lights.
+ * Optional to have a photo cell to run leds only at night.
  * My Arduino is at the top of the stairs and the RGB strip is connected at the top.
- * This will cycle through several varitions of stair walkers.
- * 
- * Version 2 is a rewrite to properly handle multi-tasking the PIR sensors in parallel with LED updates.
- * TODO: Do some code cleanup, variable naming etc.
- * 
+ *
 */
 
 #include "FastLED.h"
-//#include <avr/eeprom.h>
 
-#define NUM_LEDS 12
-#define LEDS_PER_STAIR 2        // Number of Leds per stair.  Not yet currenlty changable - just noteable
-#define BRIGHTNESS 120          // 0...255  ( used in fade7 )
-#define PIN_LED 3               // LED Data pin
-#define PIN_PIR_DOWN 5          // PIR Downstairs Pin
-#define PIN_PIR_UP 7            // PIR Upstairs Pin
-#define GO_UP -1                // Direction control - Arduino at top of stairs
-#define GO_DOWN 1               // Direction control - Arduino at top of stairs
-uint8_t gHue = 0;               // track color shifts.
-int16_t gStair = 0;             // track curent stair.
-int16_t gStairLeds = 0;         // tracking lights per stair.
-uint8_t gBright = 0;            // track brightness
-uint16_t gUpDown[NUM_LEDS];     // directional array to walk/loop up or down stairs.
-int8_t  gupDownDir = 1;         // direction of animation up or down
-CRGB    leds[NUM_LEDS];         // setup leds object to access the string
-CRGBPalette16 gPalette;         // some favorite and random colors for display.
+// == Variables to adjust ==
+#define NUM_LEDS 26                // Number of leds in your string.  Too many leds can have voltage and/or memory issues.
+#define LEDS_PER_STAIR 2           // Number of Leds per stair.
+#define PIN_LED 3                  // LED Data pin
+#define PIN_PIR_DOWN 5             // PIR Downstairs Pin,  Swap the two PIN_PIR_* if arduino is at bottom of stairs.
+#define PIN_PIR_UP 8               // PIR Upstairs Pin
+#define PIN_PHOTO_CELL 0           // the cell and 10K pulldown are connected to a0
+#define HAS_PHOTO_CELL false       // set to true if you have a photocell so lights only run at night.
+#define PHOTO_CELL_BRIGHTNESS 200  // adjust this value e.g. 10 Dark, 200 Dim, 500 Light, 800 Bright
+#define BRIGHTNESS 120             // 0...255  ( used in fade7 )
+uint8_t topBrightness = 200;       // May preserve LED life if not running at full brightness 255?
+long offInterval = 30000;          // How long the lights will run for.  1000mills * 30sec
+long photoCellInterval = 60000;    // How often to read photocell 1000mills * 60sec
+
+// == Variables used by the program ==
+#define  GO_UP -1                  // Direction control - Arduino at top of stairs
+#define  GO_DOWN 1                 // Direction control - Arduino at top of stairs
+int      photoCellReading = 0;     // the analog reading from the analog resistor divider
+uint8_t  gHue = 0;                 // track color shifts.
+int16_t  gStair = 0;               // track curent stair.
+int16_t  gStairLeds = 0;           // tracking lights per stair.
+uint8_t  gBright = 0;              // track brightness
+uint16_t gUpDown[NUM_LEDS];        // directional array to walk/loop up or down stairs.
+int8_t   gupDownDir = 1;           // direction of animation up or down
+CRGB     leds[NUM_LEDS];           // setup leds object to access the string
+CRGBPalette16 gPalette;            // some favorite and random colors for display.
 CRGBPalette16 fade6 =          (CRGB( BRIGHTNESS, 0, 0),       CRGB(BRIGHTNESS,BRIGHTNESS,0), CRGB(0,BRIGHTNESS,0),
                                 CRGB(0,BRIGHTNESS,BRIGHTNESS), CRGB(0,0,BRIGHTNESS),          CRGB(BRIGHTNESS, 0, BRIGHTNESS),
                                 CRGB( BRIGHTNESS, 0, 0));
 CRGBPalette16 z;
-int8_t gLastPalette = 15;       // track last chosen palette.
+int8_t gLastPalette = 15;         // track last chosen palette.
 unsigned long currentMillis = millis(); // define here so it does not redefine in the loop.
 long previousMillis = 0;
-long previousOffMillis = 0;     // countdown power off timer
-long offInterval = 30000;       // 1000mills * 30sec
+long previousOffMillis = 0;       // countdown power off timer
+long previousPhotoCell = 0;       // millis counter for last photocell reading.
 long effectInterval = 40;
 enum Effects { effectWalk, effectFlicker, effectFade6 };
 Effects effect = effectWalk;
@@ -53,7 +59,6 @@ enum Stage { off, stage_init, stage_grow, stage_init_run, stage_run, stage_init_
 Stage stage = off;
 int i = 0;
 int x = 0;
-uint8_t topBrightness = 200;  // May preserve LED life if not running at full brightness 255?
 uint8_t rnd = 0;
 uint8_t r = 0, g = 0, b = 0, h = 0, s = 0, v = 0; // red green blue hue sat val
 int16_t stair = 0;
@@ -65,13 +70,11 @@ CRGB trans2;
 
 void setup() {
   delay (3000); // Power Up 3 second safety delay.
-  //Serial.begin(115200);
   randomSeed(millis());
   FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);  // NOTE set LED string type here. 
   FastLED.setDither( 0 );  // Stops flikering in animations.
   pinMode(PIN_PIR_DOWN, INPUT); //5
   pinMode(PIN_PIR_UP, INPUT);  //7
-  pinMode(13, OUTPUT);
   digitalWrite(PIN_PIR_DOWN, LOW);
   digitalWrite(PIN_PIR_UP, LOW);
   welcomeRainbow();             // rainbow - give time for PIR sensors to colibrate.
@@ -83,15 +86,22 @@ void setup() {
 // Main Loop track PIR sensors.
 void loop() {
   currentMillis = millis();
-  readSensors();
-  if(currentMillis - previousMillis > effectInterval) {
-    previousMillis = currentMillis;
-    update_effect(); 
-    FastLED.show();
+  // check photocell - disable lights during the day.
+  if (HAS_PHOTO_CELL && stage == off && currentMillis - previousPhotoCell > photoCellInterval){
+    previousPhotoCell = currentMillis;
+    photoCellReading = analogRead(PIN_PHOTO_CELL); 
   }
-  if((currentMillis - previousOffMillis > offInterval) && stage == stage_run){
-    stage = stage_init_dim;
-    i = 0; r = 0; g = 0; b = 0;
+  if (!HAS_PHOTO_CELL || HAS_PHOTO_CELL && (photoCellReading < PHOTO_CELL_BRIGHTNESS)) {
+    readSensors();
+    if(currentMillis - previousMillis > effectInterval) {
+      previousMillis = currentMillis;
+      update_effect(); 
+      FastLED.show();
+    }
+    if((currentMillis - previousOffMillis > offInterval) && stage == stage_run){
+      stage = stage_init_dim;
+      i = 0; r = 0; g = 0; b = 0;
+    }
   }
 }
 
