@@ -14,12 +14,17 @@ This is now ready for Beta testing.
 Components:
 * 5v 3A switching power supply.
 * ws2812b led strip
+* 470Ω resistor
 * 2x pir sensors
 * 1000uF capacitor.
+Optional for day/night sensor:
+* photocell
+* 10KΩ resistor
 
 Wiring is pretty simple:
-* All devices share the same 5V power.
+* All devices share the same 5V power with 1000uF capacitor.
 * 3 data pins are used: for the two pir sensors and the ws2812b strip. You may want to choose different data pins - the defaults are marked at the top of the file.
+* 470Ω resistor goes on the data pin of the ws2812b.
 
 Mounting:
 * PIR sensor glued into a blank wall face-plate with round hole drilled into it.
@@ -31,8 +36,10 @@ Mounting:
 
 You can find examples of wiring online:
 * https://www.google.ca/search?q=arduino+pir&tbm=isch
+* https://www.google.ca/search?q=arduino+ws2812b&tbm=isch
 * https://learn.adafruit.com/adafruit-neopixel-uberguide/power
 * https://learn.adafruit.com/adafruit-neopixel-uberguide/arduino-library
+* https://learn.adafruit.com/photocells/using-a-photocell
 
 Video:
 
