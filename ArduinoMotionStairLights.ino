@@ -143,7 +143,7 @@ void update_effect(){
 // setup walking gUpDown array in forward: 0,1,2,3... or reverse:  ...3,2,1,0
 void setUpDown(int8_t upDownDir){
   gupDownDir = upDownDir;
-  uint8_t gStairStart = 0;
+  uint16_t gStairStart = 0;
   if (upDownDir == GO_UP){
     for ( gStair = NUM_LEDS -1; gStair >= 0; gStair-- ){
       gUpDown[gStair] = gStairStart++;
