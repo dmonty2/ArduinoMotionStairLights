@@ -1,7 +1,7 @@
 /*
  * Description: Motion activated stair lights.
  * Author: Dean Montgomery
- * Version: 2.5
+ * Version: 2.6
  * 
  * Date: Feb 17, 2018
  * 
